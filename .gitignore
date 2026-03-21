@@ -1,0 +1,49 @@
+# Data
+data/
+*.ogg
+*.wav
+*.mp3
+*.npy
+
+# Models
+models/
+*.pth
+*.pt
+*.onnx
+
+# Outputs
+outputs/
+runs/
+logs/
+wandb/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep sample submission
+!sample_submission.csv
+.claude/

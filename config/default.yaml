@@ -1,0 +1,57 @@
+model:
+  backbone: tf_efficientnet_b0_ns
+  pretrained: true
+  num_classes: 234
+  in_channels: 1
+
+audio:
+  sample_rate: 32000
+  duration: 5.0
+  n_mels: 128
+  n_fft: 2048
+  hop_length: 512
+  fmin: 50
+  fmax: 14000
+  power: 2.0
+  top_db: 80
+
+training:
+  epochs: 30
+  batch_size: 32
+  lr: 0.001
+  optimizer: adamw
+  weight_decay: 0.01
+  scheduler: cosine
+  warmup_epochs: 2
+  amp: true
+  num_workers: 4
+  val_interval: 1
+  save_best: true
+  label_smoothing: 0.025
+
+data:
+  train_audio_dir: data/train_audio
+  train_soundscapes_dir: data/train_soundscapes
+  train_csv: data/train.csv
+  soundscape_labels_csv: data/train_soundscapes_labels.csv
+  taxonomy_csv: data/taxonomy.csv
+  val_split: 0.2
+  seed: 42
+  min_rating: 3.0
+
+augmentation:
+  spec_augment: true
+  freq_mask_param: 20
+  time_mask_param: 40
+  num_freq_masks: 2
+  num_time_masks: 2
+  mixup_alpha: 0.5
+  mixup_prob: 0.5
+  add_noise_prob: 0.3
+  time_shift_prob: 0.3
+  gain_prob: 0.3
+
+inference:
+  batch_size: 16
+  tta: false
+  score_threshold: 0.01
