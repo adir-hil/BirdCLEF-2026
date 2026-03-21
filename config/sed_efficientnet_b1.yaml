@@ -1,0 +1,71 @@
+model:
+  backbone: tf_efficientnet_b1_ns
+  pretrained: true
+  num_classes: 234
+  in_channels: 1
+  model_type: sed
+  dropout: 0.3
+
+audio:
+  sample_rate: 32000
+  duration: 5.0
+  n_mels: 128
+  n_fft: 2048
+  hop_length: 512
+  fmin: 50
+  fmax: 14000
+  power: 2.0
+  top_db: 80
+
+training:
+  epochs: 30
+  batch_size: 32
+  lr: 0.001
+  optimizer: adamw
+  weight_decay: 0.01
+  scheduler: cosine
+  warmup_epochs: 3
+  amp: true
+  num_workers: 4
+  val_interval: 1
+  save_best: true
+  label_smoothing: 0.025
+  loss_type: focal
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  gradient_clip: 1.0
+  n_folds: 5
+
+data:
+  train_audio_dir: /kaggle/input/birdclef-2026/train_audio
+  train_soundscapes_dir: /kaggle/input/birdclef-2026/train_soundscapes
+  train_csv: /kaggle/input/birdclef-2026/train.csv
+  soundscape_labels_csv: /kaggle/input/birdclef-2026/train_soundscapes_labels.csv
+  taxonomy_csv: /kaggle/input/birdclef-2026/taxonomy.csv
+  val_split: 0.2
+  seed: 42
+  min_rating: 2.0
+  use_soundscapes: true
+  secondary_label_weight: 0.5
+  balanced_sampling: true
+
+augmentation:
+  spec_augment: true
+  freq_mask_param: 24
+  time_mask_param: 48
+  num_freq_masks: 2
+  num_time_masks: 2
+  mixup_alpha: 0.4
+  mixup_prob: 0.5
+  cutmix_alpha: 1.0
+  cutmix_prob: 0.3
+  add_noise_prob: 0.3
+  time_shift_prob: 0.3
+  gain_prob: 0.3
+
+inference:
+  batch_size: 32
+  tta: true
+  tta_count: 3
+  score_threshold: 0.01
+  ensemble_method: mean
