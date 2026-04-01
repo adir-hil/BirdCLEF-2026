@@ -206,6 +206,12 @@ class SoundscapeDataset(Dataset):
         """Pre-compute all (file_path, start_sec, label_vector, row_id) entries."""
         import librosa
 
+        # Ensure start/end columns are numeric (CSV may load them as strings)
+        if labels_df is not None:
+            labels_df = labels_df.copy()
+            labels_df["start"] = pd.to_numeric(labels_df["start"], errors="coerce")
+            labels_df["end"] = pd.to_numeric(labels_df["end"], errors="coerce")
+
         files = sorted([f for f in os.listdir(soundscape_dir) if f.endswith(".ogg")])
 
         for filename in files:
