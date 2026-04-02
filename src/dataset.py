@@ -176,7 +176,8 @@ class SoundscapeDataset(Dataset):
     """Dataset for continuous soundscape recordings with 5-second windows."""
 
     def __init__(self, soundscape_dir, config, species_list, labels_df=None,
-                 is_test=False, augment=False, audio_transforms=None):
+                 is_test=False, augment=False, audio_transforms=None,
+                 neg_ratio=3, seed=42):
         """
         Args:
             soundscape_dir: Path to soundscape directory.
@@ -186,6 +187,10 @@ class SoundscapeDataset(Dataset):
             is_test: If True, generate all windows without labels.
             augment: If True, apply SpecAugment.
             audio_transforms: Optional waveform augmentation pipeline.
+            neg_ratio: Max ratio of negative (empty) to positive windows.
+                       e.g. 3 means keep at most 3 negatives per positive.
+                       Set to None or 0 to keep all windows (no downsampling).
+            seed: Random seed for reproducible negative sampling.
         """
         self.soundscape_dir = soundscape_dir
         self.audio_config = config.get("audio", {})
@@ -201,6 +206,10 @@ class SoundscapeDataset(Dataset):
 
         self.windows = []
         self._build_window_index(soundscape_dir, labels_df)
+
+        # Stratified downsampling: keep all positives, subsample negatives
+        if not is_test and neg_ratio:
+            self._downsample_negatives(neg_ratio, seed)
 
     def _build_window_index(self, soundscape_dir, labels_df):
         """Pre-compute all (file_path, start_sec, label_vector, row_id) entries."""
@@ -259,6 +268,23 @@ class SoundscapeDataset(Dataset):
                     "row_id": row_id,
                 })
                 start += self.duration
+
+    def _downsample_negatives(self, neg_ratio, seed):
+        """Keep all positive windows, downsample negatives to neg_ratio:1."""
+        positives = [w for w in self.windows if w["label_vec"].sum() > 0]
+        negatives = [w for w in self.windows if w["label_vec"].sum() == 0]
+
+        max_neg = len(positives) * neg_ratio
+        if len(negatives) <= max_neg:
+            return  # already balanced enough
+
+        rng = np.random.RandomState(seed)
+        sampled_neg = [negatives[i] for i in rng.choice(len(negatives), size=max_neg, replace=False)]
+        self.windows = positives + sampled_neg
+        rng.shuffle(self.windows)
+
+        print(f"  Soundscape sampling: {len(positives)} positive + {len(sampled_neg)} negative "
+              f"(from {len(negatives)} total neg, ratio 1:{neg_ratio})")
 
     def __len__(self):
         return len(self.windows)
