@@ -247,6 +247,18 @@ class SoundscapeDataset(Dataset):
             files = all_files
             print(f"  Soundscape files: {len(files)} total")
 
+        # Debug: check label time ranges and species for first labeled file
+        if labels_by_file and not self.is_test:
+            first_key = next(iter(labels_by_file))
+            sample_labels = labels_by_file[first_key]
+            print(f"  Sample label rows for '{first_key}':")
+            for row in sample_labels[:5]:
+                sp_in_list = all(
+                    s.strip() in self.species_to_idx
+                    for s in str(row[2]).split(";") if s.strip()
+                )
+                print(f"    start={row[0]}, end={row[1]}, species='{row[2]}', in_taxonomy={sp_in_list}")
+
         for filename in files:
             file_path = os.path.join(soundscape_dir, filename)
             # Use soundfile for fast duration check (reads header only, no decode)
