@@ -218,14 +218,24 @@ class SoundscapeDataset(Dataset):
         # Ensure start/end columns are numeric (CSV may load them as strings)
         if labels_df is not None:
             labels_df = labels_df.copy()
+            # Debug: show raw values before conversion
+            print(f"  Labels CSV columns: {list(labels_df.columns)}")
+            print(f"  Raw start values (first 5): {labels_df['start'].head().tolist()}")
+            print(f"  Raw end values (first 5): {labels_df['end'].head().tolist()}")
+            print(f"  Start dtype: {labels_df['start'].dtype}, End dtype: {labels_df['end'].dtype}")
+
             labels_df["start"] = pd.to_numeric(labels_df["start"], errors="coerce")
             labels_df["end"] = pd.to_numeric(labels_df["end"], errors="coerce")
+
+            # Check for NaN after conversion
+            start_nan = labels_df["start"].isna().sum()
+            end_nan = labels_df["end"].isna().sum()
+            if start_nan > 0 or end_nan > 0:
+                print(f"  WARNING: {start_nan} NaN starts, {end_nan} NaN ends after numeric conversion")
 
         # Pre-group labels by filename for fast lookup (avoid repeated DataFrame filtering)
         labels_by_file = {}
         if labels_df is not None and not self.is_test:
-            # Debug: show CSV structure
-            print(f"  Labels CSV columns: {list(labels_df.columns)}")
             print(f"  Labels CSV sample filenames: {labels_df['filename'].unique()[:3].tolist()}")
 
             for filename, group in labels_df.groupby("filename"):
