@@ -215,23 +215,28 @@ class SoundscapeDataset(Dataset):
         """Pre-compute all (file_path, start_sec, label_vector, row_id) entries."""
         import soundfile as sf
 
-        # Ensure start/end columns are numeric (CSV may load them as strings)
+        # Convert start/end columns to numeric seconds
         if labels_df is not None:
             labels_df = labels_df.copy()
-            # Debug: show raw values before conversion
-            print(f"  Labels CSV columns: {list(labels_df.columns)}")
-            print(f"  Raw start values (first 5): {labels_df['start'].head().tolist()}")
-            print(f"  Raw end values (first 5): {labels_df['end'].head().tolist()}")
-            print(f"  Start dtype: {labels_df['start'].dtype}, End dtype: {labels_df['end'].dtype}")
-
-            labels_df["start"] = pd.to_numeric(labels_df["start"], errors="coerce")
-            labels_df["end"] = pd.to_numeric(labels_df["end"], errors="coerce")
-
-            # Check for NaN after conversion
-            start_nan = labels_df["start"].isna().sum()
-            end_nan = labels_df["end"].isna().sum()
-            if start_nan > 0 or end_nan > 0:
-                print(f"  WARNING: {start_nan} NaN starts, {end_nan} NaN ends after numeric conversion")
+            for col in ["start", "end"]:
+                # Try numeric first
+                numeric = pd.to_numeric(labels_df[col], errors="coerce")
+                if numeric.isna().all() and labels_df[col].notna().any():
+                    # Parse HH:MM:SS or MM:SS format to seconds
+                    def time_to_seconds(val):
+                        if pd.isna(val):
+                            return float("nan")
+                        parts = str(val).split(":")
+                        parts = [float(p) for p in parts]
+                        if len(parts) == 3:
+                            return parts[0] * 3600 + parts[1] * 60 + parts[2]
+                        elif len(parts) == 2:
+                            return parts[0] * 60 + parts[1]
+                        return float(parts[0])
+                    labels_df[col] = labels_df[col].apply(time_to_seconds)
+                    print(f"  Parsed '{col}' from HH:MM:SS → seconds (e.g. {labels_df[col].iloc[0]})")
+                else:
+                    labels_df[col] = numeric
 
         # Pre-group labels by filename for fast lookup (avoid repeated DataFrame filtering)
         labels_by_file = {}
