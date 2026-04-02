@@ -224,10 +224,25 @@ class SoundscapeDataset(Dataset):
         # Pre-group labels by filename for fast lookup (avoid repeated DataFrame filtering)
         labels_by_file = {}
         if labels_df is not None and not self.is_test:
+            # Debug: show CSV structure
+            print(f"  Labels CSV columns: {list(labels_df.columns)}")
+            print(f"  Labels CSV sample filenames: {labels_df['filename'].unique()[:3].tolist()}")
+
             for filename, group in labels_df.groupby("filename"):
                 labels_by_file[filename] = group[["start", "end", "primary_label"]].values
 
+            # Also index by stem (without extension) for flexible matching
+            for filename in list(labels_by_file.keys()):
+                stem = os.path.splitext(filename)[0]
+                if stem not in labels_by_file:
+                    labels_by_file[stem] = labels_by_file[filename]
+
         files = sorted([f for f in os.listdir(soundscape_dir) if f.endswith(".ogg")])
+        if files and labels_by_file:
+            print(f"  Soundscape dir sample files: {files[:3]}")
+            print(f"  Labels dict sample keys: {list(labels_by_file.keys())[:3]}")
+            matched = sum(1 for f in files if f in labels_by_file or os.path.splitext(f)[0] in labels_by_file)
+            print(f"  Files with labels: {matched}/{len(files)}")
 
         for filename in files:
             file_path = os.path.join(soundscape_dir, filename)
@@ -236,8 +251,10 @@ class SoundscapeDataset(Dataset):
             total_dur = info.duration
             basename = os.path.splitext(filename)[0]
 
-            # Get this file's labels once
+            # Get this file's labels once (try full name, then stem without extension)
             file_labels = labels_by_file.get(filename, None)
+            if file_labels is None:
+                file_labels = labels_by_file.get(basename, None)
 
             start = 0.0
             while start + self.duration <= total_dur + 0.01:
