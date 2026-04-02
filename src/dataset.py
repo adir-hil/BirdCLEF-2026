@@ -237,12 +237,15 @@ class SoundscapeDataset(Dataset):
                 if stem not in labels_by_file:
                     labels_by_file[stem] = labels_by_file[filename]
 
-        files = sorted([f for f in os.listdir(soundscape_dir) if f.endswith(".ogg")])
-        if files and labels_by_file:
-            print(f"  Soundscape dir sample files: {files[:3]}")
-            print(f"  Labels dict sample keys: {list(labels_by_file.keys())[:3]}")
-            matched = sum(1 for f in files if f in labels_by_file or os.path.splitext(f)[0] in labels_by_file)
-            print(f"  Files with labels: {matched}/{len(files)}")
+        all_files = sorted([f for f in os.listdir(soundscape_dir) if f.endswith(".ogg")])
+
+        # For training: only process labeled files (skip thousands of unlabeled ones)
+        if not self.is_test and labels_by_file:
+            files = [f for f in all_files if f in labels_by_file or os.path.splitext(f)[0] in labels_by_file]
+            print(f"  Soundscape files: {len(files)} labeled / {len(all_files)} total (skipping unlabeled)")
+        else:
+            files = all_files
+            print(f"  Soundscape files: {len(files)} total")
 
         for filename in files:
             file_path = os.path.join(soundscape_dir, filename)
