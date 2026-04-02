@@ -204,7 +204,7 @@ class SoundscapeDataset(Dataset):
 
     def _build_window_index(self, soundscape_dir, labels_df):
         """Pre-compute all (file_path, start_sec, label_vector, row_id) entries."""
-        import librosa
+        import soundfile as sf
 
         # Ensure start/end columns are numeric (CSV may load them as strings)
         if labels_df is not None:
@@ -212,12 +212,23 @@ class SoundscapeDataset(Dataset):
             labels_df["start"] = pd.to_numeric(labels_df["start"], errors="coerce")
             labels_df["end"] = pd.to_numeric(labels_df["end"], errors="coerce")
 
+        # Pre-group labels by filename for fast lookup (avoid repeated DataFrame filtering)
+        labels_by_file = {}
+        if labels_df is not None and not self.is_test:
+            for filename, group in labels_df.groupby("filename"):
+                labels_by_file[filename] = group[["start", "end", "primary_label"]].values
+
         files = sorted([f for f in os.listdir(soundscape_dir) if f.endswith(".ogg")])
 
         for filename in files:
             file_path = os.path.join(soundscape_dir, filename)
-            total_dur = librosa.get_duration(path=file_path)
+            # Use soundfile for fast duration check (reads header only, no decode)
+            info = sf.info(file_path)
+            total_dur = info.duration
             basename = os.path.splitext(filename)[0]
+
+            # Get this file's labels once
+            file_labels = labels_by_file.get(filename, None)
 
             start = 0.0
             while start + self.duration <= total_dur + 0.01:
@@ -228,15 +239,13 @@ class SoundscapeDataset(Dataset):
                     label_vec = None
                 else:
                     label_vec = np.zeros(self.num_classes, dtype=np.float32)
-                    if labels_df is not None:
-                        mask = (
-                            (labels_df["filename"] == filename) &
-                            (labels_df["start"] < end) &
-                            (labels_df["end"] > start)
-                        )
-                        for _, lrow in labels_df[mask].iterrows():
-                            # Handle semicolon-separated labels
-                            species_str = lrow["primary_label"]
+                    if file_labels is not None:
+                        # Vectorized overlap check on numpy arrays
+                        lbl_starts = file_labels[:, 0].astype(float)
+                        lbl_ends = file_labels[:, 1].astype(float)
+                        overlap = (lbl_starts < end) & (lbl_ends > start)
+                        for row in file_labels[overlap]:
+                            species_str = row[2]
                             if isinstance(species_str, str):
                                 for sp in species_str.split(";"):
                                     sp = sp.strip()
