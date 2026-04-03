@@ -1,5 +1,5 @@
 model:
-  backbone: tf_efficientnet_b0_ns
+  backbone: tf_efficientnet_b1_ns
   pretrained: true
   num_classes: 234
   in_channels: 1
