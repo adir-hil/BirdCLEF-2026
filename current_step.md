@@ -1,66 +1,60 @@
-# Current Step: Scale Up EfficientNet-B0 to B1
+# Current Step: Lower Rating Filter (Use All Training Recordings)
 
 ## Overview
 
-Upgrade the model backbone from EfficientNet-B0 (4.3M parameters) to EfficientNet-B1 (7.8M parameters) to increase model capacity without changing the training pipeline or architecture type.
+Remove the `min_rating >= 3.0` filter that was dropping 14,254 recordings (40% of the data). This gives the model more diverse training examples, including noisier recordings that better resemble real-world soundscape conditions.
 
 ## What Changed
 
-A single line in `config/default.yaml`:
+In `config/default.yaml`:
 ```yaml
 # Before
-backbone: tf_efficientnet_b0_ns
+min_rating: 3.0   # drops 14,254 recordings
 
 # After
-backbone: tf_efficientnet_b1_ns
+min_rating: 0     # keeps all 35,549 recordings
 ```
 
-Both use Noisy Student (`_ns`) pretrained weights from ImageNet, loaded via the `timm` library.
+Also reverted backbone to EfficientNet-B0 (B1 showed no improvement in submission #4).
 
-## Why B1
+## Why This Should Help
 
-| Property | B0 | B1 | B2 |
-|----------|-----|-----|-----|
-| Parameters | 4.3M | 7.8M | 9.1M |
-| Default resolution | 224 | 240 | 260 |
-| Relative compute | 1x | ~1.5x | ~2x |
+1. **More data** — 35,549 recordings instead of 21,295 (+67% more training samples)
+2. **Noisier = better** — lower-rated recordings contain background noise, overlapping species, and poor recording conditions. This is closer to what the model sees in real soundscapes at test time.
+3. **More species coverage** — some species may only have low-rated recordings. Dropping them means zero training examples for those species.
+4. **Domain gap reduction** — the main bottleneck (0.803 vs 0.938) is the model struggling on noisy real-world audio. Training on noisy data directly addresses this.
 
-- **B0** is the smallest EfficientNet — fast but limited capacity. Our current LB score (0.803) may be partly limited by model size.
-- **B1** offers ~1.8x more parameters with moderate compute increase. Should still fit within the 90-minute CPU inference budget (with TTA x3).
-- **B2** was considered but may be too slow for CPU inference with TTA. Can be tested later if B1 fits comfortably.
+## Expected Training Data
+
+| Dataset | Before (min_rating=3.0) | After (min_rating=0) |
+|---------|------------------------|---------------------|
+| Clean recordings | 17,038 train + 4,257 val | ~28,439 train + ~7,110 val |
+| Soundscape windows | 792 | 792 |
+| **Total train** | **17,830** | **~29,231** |
 
 ## What Stays the Same
 
-Everything except the backbone size:
-- Training data: 17,830 samples (17,038 clean + 792 soundscape windows from 66 labeled files)
-- Preprocessing: Mel spectrogram (128 mels, 32kHz, 5-second windows)
-- Augmentation: SpecAugment + Mixup (alpha=0.5) + audiomentations
-- Optimizer: AdamW (lr=0.001, weight_decay=0.01)
-- Scheduler: Cosine annealing + 2-epoch warmup
+- Architecture: EfficientNet-B0 (4.3M params)
+- Preprocessing: Mel spectrogram (128 mels, 32kHz, 5s windows)
+- Augmentation: SpecAugment + Mixup + audiomentations
+- Optimizer: AdamW (lr=0.001, wd=0.01)
+- Scheduler: Cosine + 2-epoch warmup
 - Loss: BCEWithLogitsLoss
 - Epochs: 18 max, early stopping patience=3
-- Batch size: 64
-- Inference: TTA x3 (original, time-shift +0.5s, time-reverse)
-
-## Expected Outcome
-
-- Slightly higher validation AUC due to increased model capacity
-- Potential LB improvement of +0.01 to +0.03 (estimated)
-- Training time may increase by ~30-50% (more parameters to update per batch)
-- Inference time may increase by ~30-50% per forward pass (must verify it stays within 90 min)
+- Inference: TTA x3
 
 ## Steps to Execute
 
-1. **Update `birdclef-src` dataset on Kaggle** — ZIP latest `src/`, `config/`, `requirements.txt` and upload as new version
-2. **Download `02_baseline.ipynb`** from GitHub and upload to Kaggle as training notebook
-3. **Run training** — Save & Run All (internet ON, GPU enabled)
-4. **Save trained model** as new Kaggle dataset: `birdclef-baseline-model-v3`
-5. **Update inference notebook** (`03_submission.ipynb`) to point to `birdclef-baseline-model-v3`
-6. **Submit inference notebook** — Save & Run All (internet OFF)
+1. **Update `birdclef-src` dataset on Kaggle** — ZIP latest `src/`, `config/`, `requirements.txt`, upload as new version
+2. **Download `02_baseline.ipynb`** from GitHub and upload to Kaggle
+3. **Run training** — Save & Run All (internet ON, GPU)
+4. **Save trained model** as `birdclef-baseline-model-v4`
+5. **Update `03_submission.ipynb`** model path to `birdclef-baseline-model-v4`
+6. **Submit** — Save & Run All (internet OFF)
 7. **Record results** in `submissions.md`
 
 ## Risk Assessment
 
-- **Low risk**: Drop-in replacement, no code changes needed beyond config
-- **Main concern**: CPU inference time with B1 + TTA x3. If too slow, can reduce TTA from 3 to 2 variants
-- **Fallback**: If B1 doesn't improve LB score, revert config to B0 and proceed to Option 1 (SED model)
+- **Low risk**: Simple config change, no code modifications
+- **Possible issue**: More data = longer training (~8-10 hours instead of ~4-5). May hit Kaggle's 12h GPU limit, but with early stopping should be fine.
+- **Possible issue**: Lower-quality recordings may add noise to training. If LB degrades, can try intermediate values (min_rating=1.0 or 2.0).

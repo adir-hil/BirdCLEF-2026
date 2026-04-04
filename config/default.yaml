@@ -1,5 +1,5 @@
 model:
-  backbone: tf_efficientnet_b1_ns
+  backbone: tf_efficientnet_b0_ns
   pretrained: true
   num_classes: 234
   in_channels: 1
@@ -37,7 +37,7 @@ data:
   taxonomy_csv: data/taxonomy.csv
   val_split: 0.2
   seed: 42
-  min_rating: 3.0
+  min_rating: 0
 
 augmentation:
   spec_augment: true
