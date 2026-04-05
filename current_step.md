@@ -1,4 +1,4 @@
-# Current Step: Lower Rating Filter (Use All Training Recordings)
+# Current Step: Lower Rating Filter (Use All Training Recordings) — DONE ✓ | LB: 0.856 (+0.053)
 
 ## Overview
 

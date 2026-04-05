@@ -12,7 +12,7 @@
 | Best epoch | 18 | 10 | 10 |
 | Final loss | 0.0126 | 0.0148 | 0.0125 |
 | Stopped at | Epoch 18 | Epoch 13 | Epoch 13 |
-| LB Score | 0.803 | 0.802 | TBD |
+| LB Score | 0.803 | 0.802 | **0.856** |
 
 ---
 
@@ -55,13 +55,23 @@ Both B1 (v3) and B0-all-ratings (v4) peak at epoch 10, vs epoch 18 for v2. More 
 | + 792 soundscape windows | 0.797 | +0.074 |
 | + TTA x3 | 0.803 | +0.006 |
 | B1 backbone | 0.802 | -0.001 |
+| All ratings (min_rating=0) | 0.856 | +0.053 |
 
-The single biggest jump came from adding soundscape training data (+0.074). Everything else has been incremental. **Closing the domain gap further (pseudo-labeling, SED model) is the highest-priority direction.**
+The two biggest jumps came from domain-gap interventions: adding soundscape training data (+0.074) and using all ratings including noisy recordings (+0.053). Model scaling (B1) had no effect. **Closing the domain gap further (SED model, pseudo-labeling) is the highest-priority direction.**
+
+---
+
+---
+
+## Insight #6: Noisier training data directly closes the domain gap
+
+Removing the `min_rating` filter (using all ratings, 35,549 recordings vs 21,295) produced +0.053 improvement — the second biggest gain in the project. This confirms that the model benefits from training on noisy, low-quality recordings that more closely resemble real-world soundscape conditions at test time.
+
+**Lesson:** Curating for "clean" training data can hurt generalization when the test distribution is noisy. For soundscape tasks, more data with diverse noise conditions beats fewer clean examples.
 
 ---
 
 ## Open Questions
 
-- Will v4 (all ratings) improve the LB score despite lower val AUC? *(pending submission)*
 - How much will the SED attention model help over simple global-average pooling?
 - Can pseudo-labeling 10,592 unlabeled soundscapes further close the domain gap?
