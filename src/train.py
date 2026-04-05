@@ -43,13 +43,15 @@ def train_one_epoch(model, optimizer, data_loader, device, criterion, scaler=Non
 
         if scaler is not None:
             with autocast():
-                logits = model(spectrograms)
+                output = model(spectrograms)
+                logits = output["clipwise_logits"] if isinstance(output, dict) else output
                 loss = criterion(logits, labels)
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
-            logits = model(spectrograms)
+            output = model(spectrograms)
+            logits = output["clipwise_logits"] if isinstance(output, dict) else output
             loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()

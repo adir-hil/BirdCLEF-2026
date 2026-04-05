@@ -3,6 +3,8 @@ model:
   pretrained: true
   num_classes: 234
   in_channels: 1
+  model_type: sed
+  dropout: 0.3
 
 audio:
   sample_rate: 32000
