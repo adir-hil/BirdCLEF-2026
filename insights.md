@@ -2,17 +2,17 @@
 
 ## Model Comparison Table
 
-| Metric | v2 (B0, rating≥3) | v3 (B1, rating≥3) | v4 (B0, all ratings) |
-|--------|-------------------|-------------------|----------------------|
-| Backbone | EfficientNet-B0 | EfficientNet-B1 | EfficientNet-B0 |
-| Parameters | 4.3M | 6.8M | 4.3M |
-| Train samples | 17,038 | 17,038 | 28,440 |
-| Val samples | 4,257 | 4,257 | 7,109 |
-| Best Val AUC | 0.9865 | 0.9767 | 0.9797 |
-| Best epoch | 18 | 10 | 10 |
-| Final loss | 0.0126 | 0.0148 | 0.0125 |
-| Stopped at | Epoch 18 | Epoch 13 | Epoch 13 |
-| LB Score | 0.803 | 0.802 | **0.856** |
+| Metric | v2 (B0, rating≥3) | v3 (B1, rating≥3) | v4 (B0, all ratings) | v5 (SED, all ratings) |
+|--------|-------------------|-------------------|----------------------|----------------------|
+| Backbone | EfficientNet-B0 | EfficientNet-B1 | EfficientNet-B0 | EfficientNet-B0 (features_only) |
+| Parameters | 4.3M | 6.8M | 4.3M | 3.85M |
+| Train samples | 17,038 | 17,038 | 28,440 | 28,440 |
+| Val samples | 4,257 | 4,257 | 7,109 | 7,109 |
+| Best Val AUC | 0.9865 | 0.9767 | 0.9797 | 0.9707 (fresh) |
+| Best epoch | 18 | 10 | 10 | 8 |
+| Final loss | 0.0126 | 0.0148 | 0.0125 | 0.0144 |
+| Stopped at | Epoch 18 | Epoch 13 | Epoch 13 | Epoch 11 |
+| LB Score | 0.803 | 0.802 | **0.856** | 0.855 |
 
 ---
 
@@ -56,8 +56,9 @@ Both B1 (v3) and B0-all-ratings (v4) peak at epoch 10, vs epoch 18 for v2. More 
 | + TTA x3 | 0.803 | +0.006 |
 | B1 backbone | 0.802 | -0.001 |
 | All ratings (min_rating=0) | 0.856 | +0.053 |
+| SED attention model | 0.855 | -0.001 |
 
-The two biggest jumps came from domain-gap interventions: adding soundscape training data (+0.074) and using all ratings including noisy recordings (+0.053). Model scaling (B1) had no effect. **Closing the domain gap further (SED model, pseudo-labeling) is the highest-priority direction.**
+The two biggest jumps came from domain-gap interventions: adding soundscape training data (+0.074) and using all ratings including noisy recordings (+0.053). Architectural changes (B1 scaling, SED attention) had no effect. **The bottleneck is data and domain gap, not model architecture. Pseudo-labeling and data-centric approaches are the highest-priority direction.**
 
 ---
 
@@ -71,7 +72,19 @@ Removing the `min_rating` filter (using all ratings, 35,549 recordings vs 21,295
 
 ---
 
+---
+
+## Insight #7: SED attention model doesn't help on 5-second windows
+
+Replacing global average pooling with learned attention-based pooling (BirdCLEFSED) scored 0.855 vs the simple B0's 0.856. This is the third architectural change that failed to improve the score (after B1 scaling and now SED).
+
+**Why it didn't help:** SED attention learns which time frames matter per species — critical for long recordings where a bird calls briefly. But with 5-second windows, there isn't enough temporal variation for attention to exploit. Global average pooling is already effective at this short duration. The SED model also had fewer parameters (3.85M vs 4.3M) due to `features_only=True` dropping the backbone's final classification layers.
+
+**Key pattern:** Three architectural experiments (B1, SED, all on same data) produced scores of 0.802, 0.855, 0.856. All within noise. Meanwhile, two data experiments (soundscapes +0.074, all ratings +0.053) produced large gains. **Architecture is not the bottleneck.**
+
+---
+
 ## Open Questions
 
-- How much will the SED attention model help over simple global-average pooling?
 - Can pseudo-labeling 10,592 unlabeled soundscapes further close the domain gap?
+- Would longer windows (10s or 15s) make SED attention more effective?
