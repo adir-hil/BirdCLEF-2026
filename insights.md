@@ -56,8 +56,9 @@ Both B1 (v3) and B0-all-ratings (v4) peak at epoch 10, vs epoch 18 for v2. More 
 | + TTA x3 | 0.803 | +0.006 |
 | B1 backbone | 0.802 | -0.001 |
 | All ratings (min_rating=0) | 0.856 | +0.053 |
+| SED attention model | 0.855 | -0.001 |
 
-The two biggest jumps came from domain-gap interventions: adding soundscape training data (+0.074) and using all ratings including noisy recordings (+0.053). Model scaling (B1) had no effect. **Closing the domain gap further (SED model, pseudo-labeling) is the highest-priority direction.**
+The two biggest jumps came from domain-gap interventions: adding soundscape training data (+0.074) and using all ratings including noisy recordings (+0.053). Architectural changes (B1, SED) had no effect. **The bottleneck is data/domain gap, not architecture. Pseudo-labeling is the highest-priority direction.**
 
 ---
 
@@ -71,7 +72,15 @@ Removing the `min_rating` filter (using all ratings, 35,549 recordings vs 21,295
 
 ---
 
+---
+
+## Insight #7: SED attention model doesn't help on 5-second windows
+
+SED scored 0.855 vs simple B0's 0.856. Three architectural changes (B1, SED) all failed. Only data changes produced gains. **Architecture is not the bottleneck.**
+
+---
+
 ## Open Questions
 
-- How much will the SED attention model help over simple global-average pooling?
 - Can pseudo-labeling 10,592 unlabeled soundscapes further close the domain gap?
+- Would longer windows (10s, 15s) make SED attention more effective?
